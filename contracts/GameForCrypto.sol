@@ -1,7 +1,7 @@
 pragma solidity ^0.7.0;
 
 //import "http://github.com/smartcontractkit/chainlink/blob/master/evm-contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
-//import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
+import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 
 contract GameForCrypto {
 
@@ -35,7 +35,7 @@ contract GameForCrypto {
     
     Contest[] contests;
     
-    //AggregatorV3Interface internal priceFeed;
+    AggregatorV3Interface internal priceFeed;
 
     /**
      * Network: Kovan
@@ -59,7 +59,7 @@ contract GameForCrypto {
         owner = msg.sender;
         
         //Get Eth / USD Price
-        //priceFeed = AggregatorV3Interface(0x8A753747A1Fa494EC906cE90E9f37563A8AF630e);
+        priceFeed = AggregatorV3Interface(0x8A753747A1Fa494EC906cE90E9f37563A8AF630e);
         
         //Contract Management Wallet
         custodianAcct = 0x1aC2E22fa9BE5162D79e38b421BCBf65D715971e;
@@ -270,7 +270,7 @@ contract GameForCrypto {
         return owner;
     }
     
-    /*
+    
     function getEthPrice() public view returns (int) {
         (
             uint80 roundID, 
@@ -281,6 +281,6 @@ contract GameForCrypto {
         ) = priceFeed.latestRoundData();
         return price;
     }
-    */
+    
 
 }
