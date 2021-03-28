@@ -1,6 +1,7 @@
 pragma solidity ^0.7.0;
 
-import "https://github.com/smartcontractkit/chainlink/blob/master/evm-contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
+//import "http://github.com/smartcontractkit/chainlink/blob/master/evm-contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
+//import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 
 contract GameForCrypto {
 
@@ -31,7 +32,7 @@ contract GameForCrypto {
     
     Contest[] contests;
     
-    AggregatorV3Interface internal priceFeed;
+    //AggregatorV3Interface internal priceFeed;
 
     /**
      * Network: Kovan
@@ -43,9 +44,11 @@ contract GameForCrypto {
      * Address: 0x8A753747A1Fa494EC906cE90E9f37563A8AF630e
      */
      
-     event Sent(address from, address to, uint amount);
+     //event Sent(address from, address to, uint amount);
 
     constructor (string memory _tokenName)  {
+        //Token name for future use, use ETH currently.
+        
         //console.log('Setting Credit Token: ', _tokenName);
         creditTokenName = _tokenName;
 
@@ -53,16 +56,18 @@ contract GameForCrypto {
         owner = msg.sender;
         
         //Get Eth / USD Price
-        priceFeed = AggregatorV3Interface(0x8A753747A1Fa494EC906cE90E9f37563A8AF630e);
+        //priceFeed = AggregatorV3Interface(0x8A753747A1Fa494EC906cE90E9f37563A8AF630e);
         
+        //Contract Management Wallet
         custodianAcct = 0x1aC2E22fa9BE5162D79e38b421BCBf65D715971e;
         
+        //Init
         contestCount = 0;
     }
 
     function addGamerCredits () public payable {
         //Add Gamer To Smart Contract
-        //Requires Token Deposit
+        //Requires ETH Deposit
         
         // .001 * 10 ** 8 (.001 Eth ~$1.60 per credit at current price)
         
@@ -70,7 +75,6 @@ contract GameForCrypto {
         
         updateGamerCredits(msg.value, msg.sender);
 
-        
     }
     
     function createContest (string memory _game, uint256 _entryFee, uint256 _maxGamers) public returns(uint256) {
@@ -89,7 +93,7 @@ contract GameForCrypto {
         removeGamerCredits(msg.sender, _entryFee);
         
         //Init Contest
-        Contest memory contest = Contest(nextContestID, _game, _entryFee, _entryFee, gamers, _maxGamers, 1, msg.sender, 0, false);
+        Contest memory contest = Contest(nextContestID, _game, _entryFee, _entryFee, gamers, _maxGamers, 1, custodianAcct, 0, false);
         
         //Add To Contests
         contests.push(contest);
@@ -129,6 +133,7 @@ contract GameForCrypto {
         //Increase currentGamers
         contest.currentGamers += 1;
         
+        //Update Contest
         contests[contestID] = contest;
         
         return true;
@@ -146,14 +151,22 @@ contract GameForCrypto {
     }
     
     function custodianAcctBalance () public view returns(uint256){
+        //Maybe should be named Smart Contract Balance...
         return address(this).balance;
     }
     
     function memberAcctBalance () public view returns(uint256){
+        //View Member Balance in Credits
         return balances[msg.sender];
     }
     
+    function acctBalance (address gamerAddress) public view returns(uint256){
+        //View Member Balance (By Address) in Credits
+        return balances[gamerAddress];
+    }
+    
     function availableCreditsByGamer (address _gamer) public view returns(uint256){
+        
         return balances[_gamer];
     }
 
@@ -173,21 +186,49 @@ contract GameForCrypto {
 
     function removeGamer () public {
         //Remove Gamer From Smart Contract
+        //For future use.
     }
 
     function withdrawlGamerCredits  () public {
         //Withdrawl Credits To Gamer
+        //Called By wallet owner only (at the moment)
+        
+        //Convert credits to WEI
+        uint256 toTransfer = balances[msg.sender] * 1000000000000000;
+        
+        msg.sender.transfer(toTransfer);
     }
 
     function transferGamerCredits  () public {
         //Transfer Credits From Pool To Gamer
+        //For future use (credit account from pool)
+    }
+    
+    function declareContestWinner (uint256 contestID, address contestWinner) public {
+        
+        //Get Contest
+        Contest memory contest = contests[contestID];
+        
+        //To-Do check for address part of contest.
+        
+        //Set Contest Winner
+        contest.winner = contestWinner;
+        contest.isComplete = true;
+        
+        //Transfer Credit Balance To Winner
+        balances[contestWinner] += contest.matchBalance;
+        contest.matchBalance = 0;
+        
+        //Update Contest
+        contests[contestID] = contest;
+        
     }
     
     function getOwner() public view returns(address) {
         return owner;
     }
     
-    
+    /*
     function getEthPrice() public view returns (int) {
         (
             uint80 roundID, 
@@ -198,5 +239,6 @@ contract GameForCrypto {
         ) = priceFeed.latestRoundData();
         return price;
     }
+    */
 
 }
