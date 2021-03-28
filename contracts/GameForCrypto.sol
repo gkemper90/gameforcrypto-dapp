@@ -16,6 +16,8 @@ contract GameForCrypto {
     address payable custodianAcct;
     
     uint256 contestCount;
+
+    mapping (string => uint256) public contestIDs;
     
     struct Contest {
         uint id;
@@ -28,6 +30,7 @@ contract GameForCrypto {
         address winner;
         uint256 score;
         bool isComplete;
+        string contestID;
     }
     
     Contest[] contests;
@@ -76,11 +79,17 @@ contract GameForCrypto {
         updateGamerCredits(msg.value, msg.sender);
 
     }
+
+    function getContestIndex(string memory contestID) public view returns(uint256) {
+
+        return contestIDs[contestID];
+
+    }
     
-    function createContest (string memory _game, uint256 _entryFee, uint256 _maxGamers) public returns(uint256) {
+    function createContest (string memory _game, uint256 _entryFee, uint256 _maxGamers, string memory _gameID) public returns(uint256) {
         
         //Should be the same as the index.. probably a better way to do this
-        uint nextContestID = contestCount;
+        uint256 nextContestID = contestCount;
         
         //Add Host to Gamers of contest
         address[] memory gamers = new address[](_maxGamers);
@@ -93,10 +102,13 @@ contract GameForCrypto {
         removeGamerCredits(msg.sender, _entryFee);
         
         //Init Contest
-        Contest memory contest = Contest(nextContestID, _game, _entryFee, _entryFee, gamers, _maxGamers, 1, custodianAcct, 0, false);
+        Contest memory contest = Contest(nextContestID, _game, _entryFee, _entryFee, gamers, _maxGamers, 1, custodianAcct, 0, false, _gameID);
         
         //Add To Contests
         contests.push(contest);
+
+        //Add Contest ID
+        contestIDs[_gameID] = nextContestID;
         
         //Increment Contest Count
         contestCount += 1;
@@ -105,10 +117,12 @@ contract GameForCrypto {
         return nextContestID;
     }
     
-    function addGamerToContest (uint256 contestID)  public returns(bool){
+    function addGamerToContest (string memory contestID)  public returns(bool){
+
+        uint256 contestIndex = getContestIndex(contestID);
         
         //Get Contest
-        Contest memory contest = contests[contestID];
+        Contest memory contest = contests[contestIndex];
         
         //Contest Max gamers
         uint256 maxGamers = contest.maxGamers;
@@ -134,16 +148,26 @@ contract GameForCrypto {
         contest.currentGamers += 1;
         
         //Update Contest
-        contests[contestID] = contest;
+        contests[contestIndex] = contest;
         
         return true;
     }
     
-    function getContestStats (uint256 contestID) public view returns(uint256, string memory, address[] memory, uint256 maxGamers, uint256 currentGamers, address winner, uint256 score, bool isComplete) {
+    function getContestStatsIndex (uint256 contestID) public view returns(uint256, string memory, address[] memory, uint256 maxGamers, uint256 currentGamers, address winner, uint256 score, bool isComplete, string memory) {
         //Get Contest
         Contest memory contest = contests[contestID];
         
-        return (contest.matchBalance, contest.game, contest.gamers, contest.maxGamers, contest.currentGamers, contest.winner, contest.score, contest.isComplete);
+        return (contest.matchBalance, contest.game, contest.gamers, contest.maxGamers, contest.currentGamers, contest.winner, contest.score, contest.isComplete, contest.contestID);
+    }
+
+    function getContestStats (string memory contestID) public view returns(uint256, string memory, address[] memory, uint256 maxGamers, uint256 currentGamers, address winner, uint256 score, bool isComplete, string memory, uint256 entryFee) {
+        //Get Contest
+
+        uint256 contestIndex = getContestIndex(contestID);
+
+        Contest memory contest = contests[contestIndex];
+        
+        return (contest.matchBalance, contest.game, contest.gamers, contest.maxGamers, contest.currentGamers, contest.winner, contest.score, contest.isComplete, contest.contestID, contest.entryFee);
     }
     
     function getContestCount () public view returns(uint) {
@@ -189,12 +213,30 @@ contract GameForCrypto {
         //For future use.
     }
 
-    function withdrawlGamerCredits  () public {
+    function withdrawlGamerCredits  (uint256 amount) public {
         //Withdrawl Credits To Gamer
         //Called By wallet owner only (at the moment)
+
+        uint256 maxAllowed = balances[msg.sender];
+
+        require(amount <= maxAllowed, "Requested More Credits Than Balance Available");
         
         //Convert credits to WEI
-        uint256 toTransfer = balances[msg.sender] * 1000000000000000;
+        uint256 toTransfer = amount * 1000000000000000;
+        balances[msg.sender] -= amount;
+        
+        msg.sender.transfer(toTransfer);
+    }
+
+    function withdrawlAllGamerCredits  () public {
+        //Withdrawl Credits To Gamer
+        //Called By wallet owner only (at the moment)
+
+        uint256 amount = balances[msg.sender];
+
+        //Convert credits to WEI
+        uint256 toTransfer = amount * 1000000000000000;
+        balances[msg.sender] -= amount;
         
         msg.sender.transfer(toTransfer);
     }
