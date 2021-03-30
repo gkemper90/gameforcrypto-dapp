@@ -14,7 +14,7 @@ their public API. Only matchmaking, solo, battle Royale stats are counted (so st
 
 Contests for snake will include a larger pool of players, and will likely be top score after a certain amount of rounds, or reaching a certain score.
 
-This project is early in development, just started last week.
+This project is early in development, just started last week. Smart contract mostly functional, Cloud functions tracking gaming stats, and interface is basic but allows deposting eth for credits, tracking credits, creating a contest, joining a contest, and withdrawling credits for eth. 
 
 I am keeping the front end, and backend cloud functions private for the time being. Although I will consider releasing after the Hackathon is over. 
 
