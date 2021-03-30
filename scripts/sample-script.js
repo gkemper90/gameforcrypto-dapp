@@ -15,7 +15,7 @@ async function main() {
 
   // We get the contract to deploy
   const GameForCrypto = await hre.ethers.getContractFactory("GameForCrypto");
-  const gameForCrypto = await GameForCrypto.deploy("ETH");
+  const gameForCrypto = await GameForCrypto.deploy();
 
   await gameForCrypto.deployed();
 
