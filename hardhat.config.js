@@ -28,7 +28,7 @@ module.exports = {
   networks: {
     hardhat: {
     },
-    /*rinkeby: {
+   /*rinkeby: {
       url: "INFURA URL",
       accounts: ['PRIVATE KEY']
     }*/
