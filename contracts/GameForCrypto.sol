@@ -1,13 +1,19 @@
-pragma solidity ^0.7.0;
+pragma solidity ^0.6.0;
 
 //import "http://github.com/smartcontractkit/chainlink/blob/master/evm-contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
+import "@chainlink/contracts/src/v0.6/ChainlinkClient.sol";
 
-contract GameForCrypto {
+contract GameForCrypto is ChainlinkClient {
 
     uint256 creditValue;
     string public creditTokenName;
-    enum State { Waiting, Ready, Active }
+    
+    address private oracle;
+    bytes32 private jobId;
+    uint256 private fee;
+
+    bytes32 public lastStatus;
 
     address private owner;
     mapping (address => uint) public balances;
@@ -49,11 +55,16 @@ contract GameForCrypto {
      
      //event Sent(address from, address to, uint amount);
 
-    constructor (string memory _tokenName)  {
+    constructor () public {
+        //c28c092ad6f045c79bdbd54ebb42ce4d
+        setPublicChainlinkToken();
+        oracle = 0x7AFe1118Ea78C1eae84ca8feE5C65Bc76CcF879e;
+        jobId = "c28c092ad6f045c79bdbd54ebb42ce4d";
+        fee = 0.1 * 10 ** 18; // 0.1 LINK
         //Token name for future use, use ETH currently.
         
         //console.log('Setting Credit Token: ', _tokenName);
-        creditTokenName = _tokenName;
+        creditTokenName = "ETH";//_tokenName;
 
         //Get Price of Token From Chainlink Oracle
         owner = msg.sender;
@@ -66,6 +77,8 @@ contract GameForCrypto {
         
         //Init
         contestCount = 0;
+
+        
     }
 
     function addGamerCredits () public payable {
@@ -168,6 +181,38 @@ contract GameForCrypto {
         Contest memory contest = contests[contestIndex];
         
         return (contest.matchBalance, contest.game, contest.gamers, contest.maxGamers, contest.currentGamers, contest.winner, contest.score, contest.isComplete, contest.contestID, contest.entryFee);
+    }
+
+    function requestContestURL(string memory contestID) public returns (string memory) 
+    {
+
+        string memory contestAPIURL = string(abi.encodePacked("https://us-central1-gameforcrypto.cloudfunctions.net/getGamingContestStatus?contestID=", contestID));
+        
+        return contestAPIURL;
+    }
+
+    function requestContestStatus(string memory contestID) public returns (bytes32 requestId) 
+    {
+        Chainlink.Request memory request = buildChainlinkRequest(jobId, address(this), this.fulfill.selector);
+
+        //string memory contestAPIURL = string(abi.encodePacked("https://us-central1-gameforcrypto.cloudfunctions.net/getGamingContestStatus?contestID=", contestID));
+        
+        // Set the URL to perform the GET request on
+        request.add("get", "https://us-central1-gameforcrypto.cloudfunctions.net/getGamingContestStatus?contestID=3aNVBU5nnxlYWh2Lj2lp");
+        //request.add("get", contestAPIURL);
+        request.add("path", "contestStatus");
+        
+        // Sends the request
+        return sendChainlinkRequestTo(oracle, request, fee);
+    }
+
+    function fulfill(bytes32 _requestId, bytes32 _status) public recordChainlinkFulfillment(_requestId)
+    {
+        lastStatus = _status;
+    }
+
+    function getLastStatus () public view returns(bytes32) {
+        return lastStatus;
     }
     
     function getContestCount () public view returns(uint) {
