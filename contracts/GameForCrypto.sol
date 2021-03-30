@@ -59,7 +59,7 @@ contract GameForCrypto is ChainlinkClient {
         //c28c092ad6f045c79bdbd54ebb42ce4d
         setPublicChainlinkToken();
         oracle = 0x7AFe1118Ea78C1eae84ca8feE5C65Bc76CcF879e;
-        jobId = "c28c092ad6f045c79bdbd54ebb42ce4d";
+        jobId = "b0bde308282843d49a3a8d2dd2464af1";
         fee = 0.1 * 10 ** 18; // 0.1 LINK
         //Token name for future use, use ETH currently.
         

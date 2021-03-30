@@ -28,10 +28,10 @@ module.exports = {
   networks: {
     hardhat: {
     },
-    /*rinkeby: {
-      url: "INFURA URL",
-      accounts: ['PRIVATE KEY']
-    }*/
+    rinkeby: {
+      url: "https://rinkeby.infura.io/v3/103804dbf72c4b539c09ec56d55341bc",
+      accounts: ['2481172e52bad2406c0e69c9d8c9558213c386bbbccfaf6f8aab6cecd298e30c']
+    }
   },
   solidity: {
     compilers: [
