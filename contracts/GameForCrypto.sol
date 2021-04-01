@@ -13,7 +13,7 @@ contract GameForCrypto is ChainlinkClient {
     bytes32 private jobId;
     uint256 private fee;
 
-    bytes32 public lastStatus;
+    string public lastStatus;
 
     address private owner;
     mapping (address => uint) public balances;
@@ -24,6 +24,8 @@ contract GameForCrypto is ChainlinkClient {
     uint256 contestCount;
 
     mapping (string => uint256) public contestIDs;
+
+    mapping (bytes32 => uint256) public requestContestIndex;
     
     struct Contest {
         uint id;
@@ -58,8 +60,8 @@ contract GameForCrypto is ChainlinkClient {
     constructor () public {
         //c28c092ad6f045c79bdbd54ebb42ce4d
         setPublicChainlinkToken();
-        oracle = 0x7AFe1118Ea78C1eae84ca8feE5C65Bc76CcF879e;
-        jobId = "b0bde308282843d49a3a8d2dd2464af1";
+        oracle = 0x2f90A6D021db21e1B2A077c5a37B3C7E75D15b7e;
+        jobId = "50fc4215f89443d185b061e5d7af9490";
         fee = 0.1 * 10 ** 18; // 0.1 LINK
         //Token name for future use, use ETH currently.
         
@@ -80,6 +82,23 @@ contract GameForCrypto is ChainlinkClient {
 
         
     }
+
+    function bytes32ToString(bytes32 _bytes32) public pure returns (string memory) {
+        uint8 i = 0;
+        while(i < 32 && _bytes32[i] != 0) {
+            i++;
+        }
+        bytes memory bytesArray = new bytes(i);
+        for (i = 0; i < 32 && _bytes32[i] != 0; i++) {
+            bytesArray[i] = _bytes32[i];
+        }
+        return string(bytesArray);
+    }
+
+     function bytes32ToAddress(bytes32 data) public returns (address) {
+        return address(uint160(uint256(data)));
+    }
+    
 
     function addGamerCredits () public payable {
         //Add Gamer To Smart Contract
@@ -195,23 +214,63 @@ contract GameForCrypto is ChainlinkClient {
     {
         Chainlink.Request memory request = buildChainlinkRequest(jobId, address(this), this.fulfill.selector);
 
-        //string memory contestAPIURL = string(abi.encodePacked("https://us-central1-gameforcrypto.cloudfunctions.net/getGamingContestStatus?contestID=", contestID));
+        string memory contestAPIURL = string(abi.encodePacked("https://us-central1-gameforcrypto.cloudfunctions.net/getGamingContestStatus?contestID=", contestID));
         
         // Set the URL to perform the GET request on
-        request.add("get", "https://us-central1-gameforcrypto.cloudfunctions.net/getGamingContestStatus?contestID=3aNVBU5nnxlYWh2Lj2lp");
+        request.add("get", contestAPIURL);
         //request.add("get", contestAPIURL);
-        request.add("path", "contestStatus");
+        request.add("path", "winner");
         
         // Sends the request
-        return sendChainlinkRequestTo(oracle, request, fee);
+        bytes32 reqID = sendChainlinkRequestTo(oracle, request, fee);
+
+        uint256 contestIndex = getContestIndex(contestID);
+
+        Contest memory contest = contests[contestIndex];
+
+        //Set requestID => contestIndex
+        requestContestIndex[reqID] = contestIndex;
+
+        return reqID;
+
+
     }
 
     function fulfill(bytes32 _requestId, bytes32 _status) public recordChainlinkFulfillment(_requestId)
     {
-        lastStatus = _status;
+        
+        //Get Winning Address
+        string memory _winner = bytes32ToString(_status);
+
+        lastStatus = _winner;
+
+        //Contest Index
+        uint256 contestIndex = requestContestIndex[_requestId];
+
+        //Get Contest
+        Contest memory contest = contests[contestIndex];
+
+        //Ensure winner is not custodian account, if so, revert
+        //require(_winner != contest.winner, 'No Valid Winner Yet..');
+
+        //To-Do Ensure winner address is part of contest
+
+        //Set Contest Winner
+        //contest.winner = _winner;
+        contest.isComplete = true;
+
+        //Transfer Credit Balance To Winner
+        //balances[_winner] += contest.matchBalance;
+        contest.matchBalance = 0;
+        
+        //Update Contest
+        contests[contestIndex] = contest;
+
+        //To-Do Emit Contest Complete Event
+
     }
 
-    function getLastStatus () public view returns(bytes32) {
+    function getLastStatus () public view returns(string memory) {
         return lastStatus;
     }
     

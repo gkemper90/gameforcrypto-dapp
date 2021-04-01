@@ -24,14 +24,14 @@ module.exports = {
 */
 
 module.exports = {
-  defaultNetwork: "rinkeby",
+  defaultNetwork: "kovan",
   networks: {
     hardhat: {
     },
-   /*rinkeby: {
-      url: "INFURA URL",
-      accounts: ['PRIVATE KEY']
-    }*/
+    kovan: {
+      url: 'infura.io....YOUR-API',
+      accounts: ['Private Key']
+    },
   },
   solidity: {
     compilers: [
