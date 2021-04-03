@@ -28,10 +28,10 @@ module.exports = {
   networks: {
     hardhat: {
     },
-    kovan: {
-      url: 'infura.io....YOUR-API',
-      accounts: ['Private Key']
-    },
+    /*kovan: {
+      url: 'YOUR INFURA',
+      accounts: ['YOUR PRIVATE KEY']
+    },*/
   },
   solidity: {
     compilers: [

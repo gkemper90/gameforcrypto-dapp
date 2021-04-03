@@ -17,6 +17,8 @@ contract GameForCrypto is ChainlinkClient {
 
     address private owner;
     mapping (address => uint) public balances;
+    mapping (string => address) public gamerNames;
+
     uint public contractBalance;
     
     address payable custodianAcct;
@@ -26,6 +28,7 @@ contract GameForCrypto is ChainlinkClient {
     mapping (string => uint256) public contestIDs;
 
     mapping (bytes32 => uint256) public requestContestIndex;
+    mapping (bytes32 => address) public requestGamerNameIndex;
     
     struct Contest {
         uint id;
@@ -35,7 +38,7 @@ contract GameForCrypto is ChainlinkClient {
         address[] gamers;
         uint256 maxGamers;
         uint256 currentGamers;
-        address winner;
+        string winner;
         uint256 score;
         bool isComplete;
         string contestID;
@@ -100,15 +103,23 @@ contract GameForCrypto is ChainlinkClient {
     }
     
 
-    function addGamerCredits () public payable {
+    function addGamerCredits (string memory gamerName) public payable {
         //Add Gamer To Smart Contract
         //Requires ETH Deposit
         
         // .001 * 10 ** 8 (.001 Eth ~$1.60 per credit at current price)
         
         require(msg.value >= 1000000000000000, "Minimum 1 Credit = .001 Eth or 1000000000000000 WEI");
+
+        gamerNames[gamerName] = msg.sender;
         
         updateGamerCredits(msg.value, msg.sender);
+
+    }
+
+    function getGamerAddress(string memory gamerName) public view returns(address) {
+
+        return gamerNames[gamerName];
 
     }
 
@@ -134,7 +145,7 @@ contract GameForCrypto is ChainlinkClient {
         removeGamerCredits(msg.sender, _entryFee);
         
         //Init Contest
-        Contest memory contest = Contest(nextContestID, _game, _entryFee, _entryFee, gamers, _maxGamers, 1, custodianAcct, 0, false, _gameID);
+        Contest memory contest = Contest(nextContestID, _game, _entryFee, _entryFee, gamers, _maxGamers, 1, 'none', 0, false, _gameID);
         
         //Add To Contests
         contests.push(contest);
@@ -185,14 +196,14 @@ contract GameForCrypto is ChainlinkClient {
         return true;
     }
     
-    function getContestStatsIndex (uint256 contestID) public view returns(uint256, string memory, address[] memory, uint256 maxGamers, uint256 currentGamers, address winner, uint256 score, bool isComplete, string memory) {
+    function getContestStatsIndex (uint256 contestID) public view returns(uint256, string memory, address[] memory, uint256 maxGamers, uint256 currentGamers, string memory winner, uint256 score, bool isComplete, string memory) {
         //Get Contest
         Contest memory contest = contests[contestID];
         
         return (contest.matchBalance, contest.game, contest.gamers, contest.maxGamers, contest.currentGamers, contest.winner, contest.score, contest.isComplete, contest.contestID);
     }
 
-    function getContestStats (string memory contestID) public view returns(uint256, string memory, address[] memory, uint256 maxGamers, uint256 currentGamers, address winner, uint256 score, bool isComplete, string memory, uint256 entryFee) {
+    function getContestStats (string memory contestID) public view returns(uint256, string memory, address[] memory, uint256 maxGamers, uint256 currentGamers, string memory winner, uint256 score, bool isComplete, string memory, uint256 entryFee) {
         //Get Contest
 
         uint256 contestIndex = getContestIndex(contestID);
@@ -236,6 +247,44 @@ contract GameForCrypto is ChainlinkClient {
 
     }
 
+    function addressToString(address _addr) public pure returns(string memory) {
+    bytes32 value = bytes32(uint256(_addr));
+    bytes memory alphabet = "0123456789abcdef";
+
+    bytes memory str = new bytes(51);
+    str[0] = "0";
+    str[1] = "x";
+    for (uint i = 0; i < 20; i++) {
+        str[2+i*2] = alphabet[uint(uint8(value[i + 12] >> 4))];
+        str[3+i*2] = alphabet[uint(uint8(value[i + 12] & 0x0f))];
+    }
+    return string(str);
+    }
+
+    function requestGamerID() public returns (bytes32 requestId) 
+    {
+        Chainlink.Request memory request = buildChainlinkRequest(jobId, address(this), this.fulfillGamerID.selector);
+
+        string memory senderAddress = addressToString(msg.sender);
+
+        string memory contestAPIURL = string(abi.encodePacked("https://us-central1-gameforcrypto.cloudfunctions.net/getGamerIDByAddress?address=", senderAddress));
+        
+        // Set the URL to perform the GET request on
+        request.add("get", contestAPIURL);
+        //request.add("get", contestAPIURL);
+        request.add("path", "gamerName");
+        
+        // Sends the request
+        bytes32 reqID = sendChainlinkRequestTo(oracle, request, fee);
+
+        //Set requestID => address
+        requestGamerNameIndex[reqID] = msg.sender;
+
+        return reqID;
+
+
+    }
+
     function fulfill(bytes32 _requestId, bytes32 _status) public recordChainlinkFulfillment(_requestId)
     {
         
@@ -250,23 +299,43 @@ contract GameForCrypto is ChainlinkClient {
         //Get Contest
         Contest memory contest = contests[contestIndex];
 
-        //Ensure winner is not custodian account, if so, revert
+        //Ensure winner is not custodian account, if so, revert - todo remove most likely
         //require(_winner != contest.winner, 'No Valid Winner Yet..');
 
         //To-Do Ensure winner address is part of contest
 
+        //To-Do Ensure Winner is not "none"
+
         //Set Contest Winner
-        //contest.winner = _winner;
+        contest.winner = _winner;
         contest.isComplete = true;
 
         //Transfer Credit Balance To Winner
-        //balances[_winner] += contest.matchBalance;
+        address _gamerAddress = gamerNames[_winner];
+        balances[_gamerAddress] += contest.matchBalance;
         contest.matchBalance = 0;
         
         //Update Contest
         contests[contestIndex] = contest;
 
         //To-Do Emit Contest Complete Event
+
+    }
+
+    function fulfillGamerID(bytes32 _requestId, bytes32 _gamerID) public recordChainlinkFulfillment(_requestId)
+    {
+        
+        //Get Winning Address
+        string memory _gamerString = bytes32ToString(_gamerID);
+
+        //Gamer Address Mapping
+        address _gamerAddress = requestGamerNameIndex[_requestId];
+
+        //Assign gamerName Mapping
+        gamerNames[_gamerString] = _gamerAddress;
+
+        //Get Contest
+       // Contest memory contest = contests[contestIndex];
 
     }
 
@@ -358,7 +427,7 @@ contract GameForCrypto is ChainlinkClient {
         //To-Do check for address part of contest.
         
         //Set Contest Winner
-        contest.winner = contestWinner;
+        //contest.winner = contestWinner;
         contest.isComplete = true;
         
         //Transfer Credit Balance To Winner
