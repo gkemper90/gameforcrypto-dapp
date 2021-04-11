@@ -6,6 +6,13 @@ Add Kovan Private Key, Infura URI in hardhat.config.js. Run the below in termina
 - Here is a link to etherscan with the currently deployed contract as of 4/11: 
 https://kovan.etherscan.io/address/0xe7aF60280612eb99263f305c0C61D837aa5D1CE2#events
 
+- Demo Video:
+https://youtu.be/aJz2qQYdTxo
+
+**
+Front End Demo: https://gameforcrypto.web.app/
+**
+
 **Events:**
 ```gamerJoinedContest(string gamerName, string contestID)```
 ```gamerNameClaimed(string gamerName, address gamerAddress)```
@@ -37,9 +44,6 @@ https://kovan.etherscan.io/address/0xe7aF60280612eb99263f305c0C61D837aa5D1CE2#ev
 
 - Returns amount of credits available in the gamers account.
 ```function availableCreditsByGamer (address _gamer) public view returns(uint256)```
-**
-Front End Demo: https://gameforcrypto.web.app/
-**
 
 ##What is Game For Crypto?
 
