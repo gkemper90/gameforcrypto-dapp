@@ -18,6 +18,8 @@ contract GameForCrypto is ChainlinkClient {
     address private owner;
     mapping (address => uint) public balances;
     mapping (string => address) public gamerNames;
+    mapping (address => string) public addressToGamerName;
+    mapping (uint256 => string) public indexToContestID;
 
     uint public contractBalance;
     
@@ -43,6 +45,28 @@ contract GameForCrypto is ChainlinkClient {
         bool isComplete;
         string contestID;
     }
+
+    event contestCreated(
+         string contestID,
+         string hostGamer,
+         string game,
+         uint256 maxPlayers
+    );
+
+    event gamerNameClaimed(
+         string gamerName,
+         address gamerAddress
+    );
+
+    event gamerJoinedContest(
+         string gamerName,
+         string contestID
+    );
+
+    event winnerDetermined(
+         string gamerName,
+         string contestID
+    );
     
     Contest[] contests;
     
@@ -107,11 +131,14 @@ contract GameForCrypto is ChainlinkClient {
         //Add Gamer To Smart Contract
         //Requires ETH Deposit
         
-        // .001 * 10 ** 8 (.001 Eth ~$1.60 per credit at current price)
+        // .001 * 10 ** 8 (.001 Eth ~$1.60 per credit at current price) 100000000000000
         
-        require(msg.value >= 1000000000000000, "Minimum 1 Credit = .001 Eth or 1000000000000000 WEI");
+        require(msg.value >= 1000000000000000, "Minimum 10 Credit = .001 Eth or 100000000000000 x 10 WEI");
 
         gamerNames[gamerName] = msg.sender;
+        addressToGamerName[msg.sender] = gamerName;
+
+        emit gamerNameClaimed(gamerName, msg.sender);
         
         updateGamerCredits(msg.value, msg.sender);
 
@@ -152,9 +179,15 @@ contract GameForCrypto is ChainlinkClient {
 
         //Add Contest ID
         contestIDs[_gameID] = nextContestID;
+        indexToContestID[nextContestID] = _gameID;
         
         //Increment Contest Count
         contestCount += 1;
+
+        //Get sender gamerName
+        string memory _host = addressToGamerName[msg.sender];
+
+        emit contestCreated(_gameID, _host, _game, _maxGamers);
         
         //Return Contest index
         return nextContestID;
@@ -183,6 +216,11 @@ contract GameForCrypto is ChainlinkClient {
         require(contest.entryFee <= gamerBalance, "Not enough credits");
         
         removeGamerCredits(msg.sender, contest.entryFee);
+
+        //Get sender gamerName
+        string memory _gamerName = addressToGamerName[msg.sender];
+
+        emit gamerJoinedContest( _gamerName, contestID);
         
         //Increase balance
         contest.matchBalance += contest.entryFee;
@@ -318,7 +356,10 @@ contract GameForCrypto is ChainlinkClient {
         //Update Contest
         contests[contestIndex] = contest;
 
+        string memory _contestID = indexToContestID[contestIndex];
+
         //To-Do Emit Contest Complete Event
+        emit winnerDetermined(_winner, _contestID);
 
     }
 
@@ -371,7 +412,8 @@ contract GameForCrypto is ChainlinkClient {
         //Convert Deposit To Credits Balance
         //Save Balance On Blockchain
         
-        uint256 credits = amount / 1000000000000000;
+        //uint256 credits = amount / 1000000000000000;
+        uint256 credits = amount / 100000000000000;
         balances[gamerAddress] += credits;
 
     }
@@ -395,7 +437,7 @@ contract GameForCrypto is ChainlinkClient {
         require(amount <= maxAllowed, "Requested More Credits Than Balance Available");
         
         //Convert credits to WEI
-        uint256 toTransfer = amount * 1000000000000000;
+        uint256 toTransfer = amount * 100000000000000;
         balances[msg.sender] -= amount;
         
         msg.sender.transfer(toTransfer);
@@ -408,52 +450,10 @@ contract GameForCrypto is ChainlinkClient {
         uint256 amount = balances[msg.sender];
 
         //Convert credits to WEI
-        uint256 toTransfer = amount * 1000000000000000;
+        uint256 toTransfer = amount * 100000000000000;
         balances[msg.sender] -= amount;
         
         msg.sender.transfer(toTransfer);
     }
-
-    function transferGamerCredits  () public {
-        //Transfer Credits From Pool To Gamer
-        //For future use (credit account from pool)
-    }
     
-    function declareContestWinner (uint256 contestID, address contestWinner) public {
-        
-        //Get Contest
-        Contest memory contest = contests[contestID];
-        
-        //To-Do check for address part of contest.
-        
-        //Set Contest Winner
-        //contest.winner = contestWinner;
-        contest.isComplete = true;
-        
-        //Transfer Credit Balance To Winner
-        balances[contestWinner] += contest.matchBalance;
-        contest.matchBalance = 0;
-        
-        //Update Contest
-        contests[contestID] = contest;
-        
-    }
-    
-    function getOwner() public view returns(address) {
-        return owner;
-    }
-    
-    
-    function getEthPrice() public view returns (int) {
-        (
-            uint80 roundID, 
-            int price,
-            uint startedAt,
-            uint timeStamp,
-            uint80 answeredInRound
-        ) = priceFeed.latestRoundData();
-        return price;
-    }
-    
-
 }

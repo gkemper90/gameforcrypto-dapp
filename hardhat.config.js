@@ -30,7 +30,7 @@ module.exports = {
     },
     /*kovan: {
       url: 'YOUR INFURA',
-      accounts: ['YOUR PRIVATE KEY']
+      accounts: ['PrivateKey']
     },*/
   },
   solidity: {
